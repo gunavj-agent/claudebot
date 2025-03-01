@@ -1,0 +1,26 @@
++-------------------+        +----------------------+        +-------------------+
+|     Frontend      |        |       Backend        |        | External Services |
++-------------------+        +----------------------+        +-------------------+
+| - HTML/CSS/JS UI  | -----> | - FastAPI Endpoints  | -----> | - Claude 3 Haiku  |
+| - Document Upload |        | - Document Processor |        | - HuggingFace     |
+| - Chat Interface  |        | - Keyword Extractor  |        |   Embeddings      |
++-------------------+        | - Vector Search      |        +-------------------+
+                             | - RAG System         |
+                             +----------------------+
+                                       |
+                                       v
+                             +----------------------+
+                             |       Storage        |
+                             +----------------------+
+                             | - FAISS Vector DB    |
+                             | - Document Storage   |
+                             +----------------------+
+
++-------------------+        +----------------------+        +-------------------+
+|    User Request   |        |   Keyword Search     |        |    Response       |
++-------------------+        +----------------------+        +-------------------+
+| Question          | -----> | Extract Keywords     | -----> | If keywords found |
+|                   |        | Search Vector DB     |        | - Use RAG         |
+|                   |        |                      |        | If not found      |
+|                   |        |                      |        | - Use Claude      |
++-------------------+        +----------------------+        +-------------------+

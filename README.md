@@ -12,6 +12,43 @@ A modern AI-powered chatbot with intelligent document processing capabilities, b
 
 ## 📋 Architecture
 
+### System Overview
+
+```
++-------------------+        +----------------------+        +-------------------+
+|     Frontend      |        |       Backend        |        | External Services |
++-------------------+        +----------------------+        +-------------------+
+| - HTML/CSS/JS UI  | -----> | - FastAPI Endpoints  | -----> | - Claude 3 Haiku  |
+| - Document Upload |        | - Document Processor |        | - HuggingFace     |
+| - Chat Interface  |        | - Keyword Extractor  |        |   Embeddings      |
++-------------------+        | - Vector Search      |        +-------------------+
+                             | - RAG System         |
+                             +----------------------+
+                                       |
+                                       v
+                             +----------------------+
+                             |       Storage        |
+                             +----------------------+
+                             | - FAISS Vector DB    |
+                             | - Document Storage   |
+                             +----------------------+
+```
+
+### Keyword-Based RAG Flow
+
+```
++-------------------+        +----------------------+        +-------------------+
+|    User Request   |        |   Keyword Search     |        |    Response       |
++-------------------+        +----------------------+        +-------------------+
+| Question          | -----> | Extract Keywords     | -----> | If keywords found |
+|                   |        | Search Vector DB     |        | - Use RAG         |
+|                   |        |                      |        | If not found      |
+|                   |        |                      |        | - Use Claude      |
++-------------------+        +----------------------+        +-------------------+
+```
+
+For more detailed architecture diagrams, see the [architecture documentation](docs/architecture.md).
+
 ### Backend
 - **FastAPI**: High-performance web framework
 - **Claude 3 Haiku**: Anthropic's powerful AI model for chat responses
