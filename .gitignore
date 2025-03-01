@@ -31,3 +31,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Uploaded files
+uploads/
+vector_store/

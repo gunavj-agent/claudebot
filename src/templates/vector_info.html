@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Store Information</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .document-card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+        }
+        .document-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .metadata {
+            background-color: #eee;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .content-preview {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Vector Store Information</h1>
+        
+        <div id="status" class="status">Loading...</div>
+        
+        <div id="document-count"></div>
+        
+        <div id="documents-container"></div>
+        
+        <a href="/" class="back-link">← Back to Chat</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/vector-info');
+                const data = await response.json();
+                
+                // Update status
+                const statusElement = document.getElementById('status');
+                statusElement.textContent = data.message;
+                statusElement.className = `status ${data.status}`;
+                
+                // Update document count
+                document.getElementById('document-count').textContent = 
+                    `Total documents in vector store: ${data.document_count}`;
+                
+                // Display documents
+                const documentsContainer = document.getElementById('documents-container');
+                if (data.documents && data.documents.length > 0) {
+                    data.documents.forEach(doc => {
+                        const docElement = document.createElement('div');
+                        docElement.className = 'document-card';
+                        
+                        const docTitle = document.createElement('h3');
+                        docTitle.textContent = `Document ID: ${doc.id}`;
+                        docElement.appendChild(docTitle);
+                        
+                        const metadataTitle = document.createElement('h4');
+                        metadataTitle.textContent = 'Metadata:';
+                        docElement.appendChild(metadataTitle);
+                        
+                        const metadata = document.createElement('div');
+                        metadata.className = 'metadata';
+                        metadata.textContent = JSON.stringify(doc.metadata, null, 2);
+                        docElement.appendChild(metadata);
+                        
+                        const contentTitle = document.createElement('h4');
+                        contentTitle.textContent = 'Content Preview:';
+                        docElement.appendChild(contentTitle);
+                        
+                        const content = document.createElement('div');
+                        content.className = 'content-preview';
+                        content.textContent = doc.content_preview;
+                        docElement.appendChild(content);
+                        
+                        documentsContainer.appendChild(docElement);
+                    });
+                } else {
+                    documentsContainer.textContent = 'No documents found in the vector store.';
+                }
+            } catch (error) {
+                console.error('Error fetching vector store info:', error);
+                const statusElement = document.getElementById('status');
+                statusElement.textContent = `Error: ${error.message}`;
+                statusElement.className = 'status error';
+            }
+        });
+    </script>
+</body>
+</html>
