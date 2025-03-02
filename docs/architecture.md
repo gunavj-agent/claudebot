@@ -13,7 +13,7 @@ graph TD
     subgraph "Backend (FastAPI)"
         API[API Endpoints]
         DocProc[Document Processor]
-        KeywordExtract[Keyword Extractor]
+        SemanticSearch[Semantic Search]
         VectorSearch[Vector Search]
         RAG[RAG System]
         Chat_LLM[Chat LLM]
@@ -36,13 +36,13 @@ graph TD
     
     %% Backend internal connections
     API --> DocProc
-    API --> KeywordExtract
+    API --> SemanticSearch
     API --> VectorSearch
     API --> RAG
     API --> Chat_LLM
     
     DocProc --> VectorDB
-    KeywordExtract --> VectorSearch
+    SemanticSearch --> VectorSearch
     VectorSearch --> VectorDB
     VectorSearch --> RAG
     RAG --> Chat_LLM
@@ -62,7 +62,7 @@ graph TD
     classDef external fill:#fbb,stroke:#333,stroke-width:2px;
     
     class UI,Upload,Chat frontend;
-    class API,DocProc,KeywordExtract,VectorSearch,RAG,Chat_LLM backend;
+    class API,DocProc,SemanticSearch,VectorSearch,RAG,Chat_LLM backend;
     class VectorDB,DocStorage storage;
     class Claude,HFEmbeddings external;
 ```
@@ -74,7 +74,7 @@ sequenceDiagram
     participant User
     participant UI as Web Interface
     participant API as FastAPI Backend
-    participant KE as Keyword Extractor
+    participant SS as Semantic Search
     participant VS as Vector Search
     participant RAG as RAG System
     participant VDB as Vector Database
@@ -91,17 +91,17 @@ sequenceDiagram
     %% Chat Flow
     User->>UI: Send Message
     UI->>API: POST /chat
-    API->>KE: Extract Keywords
-    KE->>VS: Search Keywords in Vector DB
+    API->>SS: Process Full Query
+    SS->>VS: Semantic Search in Vector DB
     VS->>VDB: Query Vector Database
-    VDB->>VS: Return Relevant Documents
+    VDB->>VS: Return Documents with Relevance Scores
     
-    alt Keywords Found in Vector DB
+    alt Relevant Documents Found (Score < 0.6)
         VS->>RAG: Use RAG with Relevant Documents
         RAG->>Claude: Generate Response with Document Context
         Claude->>RAG: Return Document-Based Response
         RAG->>API: Return Response with Source Citations
-    else No Keywords Found
+    else No Relevant Documents Found
         API->>Claude: Generate Response from General Knowledge
         Claude->>API: Return General Knowledge Response
     end
@@ -144,12 +144,12 @@ flowchart TD
         CP_DocProc[Document Processor]
         CP_Embeddings[Embedding Generator]
         CP_Chunking[Text Chunker]
-        CP_KeywordExtract[Keyword Extractor]
+        CP_SemanticSearch[Semantic Search]
         CP_VectorSearch[Vector Search]
         
         CP_DocProc --> CP_Chunking
         CP_Chunking --> CP_Embeddings
-        CP_KeywordExtract --> CP_VectorSearch
+        CP_SemanticSearch --> CP_VectorSearch
     end
     
     subgraph "RAG System"
@@ -182,7 +182,7 @@ flowchart TD
     API_Upload --> CP_DocProc
     CP_DocProc --> ST_Uploads
     CP_Embeddings --> ST_FAISS
-    API_Chat --> CP_KeywordExtract
+    API_Chat --> CP_SemanticSearch
     CP_VectorSearch --> ST_FAISS
     CP_VectorSearch --> RAG_Retriever
     RAG_Generator --> EXT_Claude
@@ -198,7 +198,7 @@ flowchart TD
     
     class UI_Container,UI_Input,UI_Upload,UI_Messages,UI_Status ui;
     class API_Chat,API_Upload,API_Vector,API_VectorView api;
-    class CP_DocProc,CP_Embeddings,CP_Chunking,CP_KeywordExtract,CP_VectorSearch core;
+    class CP_DocProc,CP_Embeddings,CP_Chunking,CP_SemanticSearch,CP_VectorSearch core;
     class RAG_Retriever,RAG_Context,RAG_Generator rag;
     class ST_FAISS,ST_Uploads storage;
     class EXT_Claude,EXT_HF external;

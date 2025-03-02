@@ -1,10 +1,10 @@
-# Notif Chatbot - Keyword-Based RAG System
+# Notif Chatbot - Semantic Search RAG System
 
 A modern AI-powered chatbot with intelligent document processing capabilities, built with FastAPI and Claude 3 Haiku.
 
 ## 🚀 Features
 
-- **Intelligent RAG System**: Keyword-based document search that only uses RAG when relevant
+- **Intelligent RAG System**: Semantic search that only uses RAG when documents are sufficiently relevant
 - **Document Processing**: Upload and process PDF, TXT, and other text-based documents
 - **Vector Store Management**: FAISS-based vector database for efficient document retrieval
 - **Modern UI**: Clean, responsive interface with animated buttons and status indicators
@@ -34,16 +34,16 @@ A modern AI-powered chatbot with intelligent document processing capabilities, b
                              +----------------------+
 ```
 
-### Keyword-Based RAG Flow
+### Semantic Search RAG Flow
 
 ```
 +-------------------+        +----------------------+        +-------------------+
-|    User Request   |        |   Keyword Search     |        |    Response       |
+|    User Request   |        |   Semantic Search    |        |    Response       |
 +-------------------+        +----------------------+        +-------------------+
-| Question          | -----> | Extract Keywords     | -----> | If keywords found |
+| Question          | -----> | Process Full Query   | -----> | If relevant docs  |
 |                   |        | Search Vector DB     |        | - Use RAG         |
-|                   |        |                      |        | If not found      |
-|                   |        |                      |        | - Use Claude      |
+|                   |        | Score Relevance      |        | If not relevant   |
+|                   |        | (Threshold: 0.6)     |        | - Use Claude      |
 +-------------------+        +----------------------+        +-------------------+
 ```
 
@@ -55,6 +55,7 @@ For more detailed architecture diagrams, see the [architecture documentation](do
 - **LangChain**: Framework for RAG (Retrieval Augmented Generation)
 - **FAISS**: Vector database for efficient similarity search
 - **HuggingFace Embeddings**: For converting text to vector embeddings
+- **Semantic Search**: Full query-based semantic similarity search
 
 ### Frontend
 - **HTML/CSS/JavaScript**: Modern, responsive UI
@@ -110,21 +111,27 @@ The application will be available at: http://127.0.0.1:8000
 
 ## 🔍 How It Works
 
-### Keyword-Based RAG System
+### Semantic Search RAG System
 
-1. **Keyword Extraction**:
-   - The system extracts meaningful keywords from user questions
-   - Common words and short terms are filtered out
+1. **Full Query Processing**:
+   - The system uses the entire user query for semantic search
+   - No keyword extraction or filtering is performed
 
 2. **Vector Database Search**:
-   - Each keyword is searched in the vector database
-   - If any keyword is found, the system identifies relevant documents
+   - The full query is compared against document embeddings in the vector database
+   - Documents are retrieved with similarity scores (lower is better)
+   - Top 5 most relevant documents are considered
 
-3. **Smart Response Generation**:
-   - If keywords are found in the vector database:
-     - The system uses the pre-fetched relevant documents
+3. **Relevance Evaluation**:
+   - Each document's relevance is evaluated based on its similarity score
+   - Documents with scores below 0.6 are considered relevant
+   - Detailed logging tracks the relevance decision process
+
+4. **Smart Response Generation**:
+   - If relevant documents are found (score < 0.6):
+     - The system uses these documents as context
      - The response is generated based specifically on these documents
-   - If no keywords are found in the vector database:
+   - If no relevant documents are found:
      - The system falls back to the general Anthropic model
      - It provides a response based on its general knowledge
 

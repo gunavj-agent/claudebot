@@ -296,176 +296,147 @@ async def chat(request: ChatRequest):
                 detail=f"Message too long. Please limit to {MAX_INPUT_TOKENS} tokens (approximately 8000 characters)"
             )
 
-        response_text = ""
+        # Create a base system message
+        system_message = "You are a helpful AI assistant."
+        context = ""
+        use_rag = False
         
-        # Check if vectorstore exists
-        if vectorstore is None:
-            logger.info("No vectorstore available")
-            has_documents = False
-        else:
-            logger.info(f"Vectorstore available with {vectorstore.index.ntotal} embeddings")
-            has_documents = vectorstore.index.ntotal > 0
+        # Debug: Print information about the request and vector store
+        logger.info("========== RAG DEBUG INFORMATION ==========")
+        logger.info(f"User query: {request.message}")
+        logger.info(f"Vector store exists: {vectorstore is not None}")
+        if vectorstore is not None:
+            logger.info(f"Documents in vector store: {vectorstore.index.ntotal}")
+        logger.info("==========================================")
         
-        # Extract keywords from the question
-        def extract_keywords(text):
-            # Remove common words and punctuation
-            common_words = {'what', 'when', 'where', 'who', 'why', 'how', 'is', 'are', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'about', 'like', 'and', 'or', 'not', 'but', 'if', 'then', 'than', 'so', 'as', 'of', 'from', 'that', 'this', 'these', 'those', 'it', 'its', 'they', 'them', 'their', 'do', 'does', 'did', 'has', 'have', 'had', 'can', 'could', 'will', 'would', 'should', 'may', 'might', 'must', 'be', 'been', 'being', 'am', 'was', 'were', 'i', 'you', 'he', 'she', 'we', 'they'}
-            words = text.lower().split()
-            keywords = [word.strip('.,?!()[]{}":;') for word in words if word.strip('.,?!()[]{}":;').lower() not in common_words and len(word) > 2]
-            return keywords
-        
-        keywords = extract_keywords(request.message)
-        logger.info(f"Extracted keywords: {keywords}")
-        
-        # Check if keywords exist in vector store
-        keywords_in_vectorstore = False
-        relevant_docs = []
-        
-        if has_documents and keywords:
+        # Intelligently decide whether to use RAG based on vector store availability and query relevance
+        if vectorstore is not None and vectorstore.index.ntotal > 0:
+            logger.info(f"Checking document relevance for query: {request.message}")
             try:
-                # Search for each keyword in the vector store
-                for keyword in keywords:
-                    if len(keyword) < 3:  # Skip very short keywords
-                        continue
-                    
-                    # Search the vector store for the keyword
-                    docs = vectorstore.similarity_search(keyword, k=1)
-                    
-                    if docs:
-                        logger.info(f"Keyword '{keyword}' found in vector store")
-                        keywords_in_vectorstore = True
-                        for doc in docs:
-                            if doc not in relevant_docs:
-                                relevant_docs.append(doc)
+                # Detailed debug information for semantic search
+                print("\n\n===== DEBUG: Starting semantic search =====")
+                print(f"Query: {request.message}")
+                print(f"Vector store has {vectorstore.index.ntotal} documents")
+                logger.info(f"Vector store path: {vectorstore_path}")
+                logger.info(f"Vector store dimensions: {vectorstore.index.d}")
                 
-                logger.info(f"Keywords found in vector store: {keywords_in_vectorstore}")
-                logger.info(f"Found {len(relevant_docs)} relevant documents")
-            except Exception as e:
-                logger.error(f"Error searching keywords in vector store: {str(e)}")
-        
-        # Use RAG if requested, documents exist, and keywords were found in the vector store
-        if request.use_rag and has_documents and keywords_in_vectorstore:
-            try:
-                logger.info("Using RAG for response generation")
-                
-                # Create a retriever
-                retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-                
-                # If we already found relevant documents, we can use them directly
-                if relevant_docs:
-                    logger.info(f"Using {len(relevant_docs)} pre-fetched relevant documents")
-                    
-                    # Create a custom system prompt for RAG
-                    system_prompt = """You are a helpful AI assistant that answers questions based on the provided documents.
-                    When answering, use only the information from the documents provided. 
-                    If the documents don't contain the answer, say that you don't know based on the available information.
-                    Always cite your sources by mentioning which document(s) you used to answer the question."""
-                    
-                    # Create LLM
-                    llm = ChatAnthropicMessages(
-                        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
-                        model_name="claude-3-haiku-20240307",
-                        max_tokens=min(request.max_tokens, MAX_OUTPUT_TOKENS),
-                    )
-                    
-                    # Prepare document content for the prompt
-                    doc_content = ""
-                    source_references = "\n\nSources:\n"
-                    
-                    for i, doc in enumerate(relevant_docs):
-                        doc_content += f"\nDocument {i+1}:\n{doc.page_content}\n"
-                        source_name = doc.metadata.get("source", f"Document {i+1}")
-                        source_references += f"- {source_name}\n"
-                    
-                    # Create the prompt with document content
-                    prompt = f"""Based on the following documents, please answer this question: {request.message}
-                    
-                    {doc_content}
-                    """
-                    
-                    # Get response from Claude
-                    completion = anthropic.messages.create(
-                        model="claude-3-haiku-20240307",
-                        max_tokens=min(request.max_tokens, MAX_OUTPUT_TOKENS),
-                        system=system_prompt,
-                        messages=[{"role": "user", "content": prompt}]
-                    )
-                    
-                    # Extract answer
-                    answer = completion.content[0].text if completion.content else "No response generated"
-                    
-                    # Combine answer with source references
-                    response_text = answer + source_references
-                else:
-                    # Create memory
-                    memory = ConversationBufferMemory(
-                        memory_key="chat_history",
-                        return_messages=True,
-                        output_key="answer"  # Specify the output key
-                    )
-                    
-                    # Create the chain
-                    qa_chain = ConversationalRetrievalChain.from_llm(
-                        llm=llm,
-                        retriever=retriever,
-                        memory=memory,
-                        return_source_documents=True,
-                    )
-                    
-                    # Run the chain
-                    result = qa_chain.invoke({"question": request.message})
-                    
-                    # Extract answer and source documents
-                    answer = result["answer"]
-                    source_docs = result.get("source_documents", [])
-                    
-                    # Format source document references
-                    source_references = ""
-                    if source_docs:
-                        source_references = "\n\nSources:\n"
-                        for i, doc in enumerate(source_docs):
-                            source_name = doc.metadata.get("source", f"Document {i+1}")
-                            source_references += f"- {source_name}\n"
-                    
-                    # Combine answer with source references
-                    response_text = answer + source_references
-            except Exception as e:
-                logger.error(f"RAG error: {str(e)}")
-                # Fall back to regular chat if RAG fails
-                completion = anthropic.messages.create(
-                    model="claude-3-haiku-20240307",
-                    max_tokens=min(request.max_tokens, MAX_OUTPUT_TOKENS),
-                    messages=[{"role": "user", "content": request.message}]
+                # Perform semantic search on the entire query
+                logger.info("Executing similarity_search_with_score with k=5 (retrieving more potential matches)")
+                search_results = vectorstore.similarity_search_with_score(
+                    request.message,
+                    k=5  # Retrieve top 5 most relevant documents for more options
                 )
-                response_text = completion.content[0].text if completion.content else "No response generated"
+                
+                # Check if we have any results with good relevance scores
+                relevant_docs = []
+                logger.info("========== DOCUMENT RELEVANCE SCORES ==========")
+                logger.info(f"Total documents retrieved: {len(search_results)}")
+                logger.info(f"Relevance threshold: 0.6 (lower is better)")
+                
+                for i, (doc, score) in enumerate(search_results):
+                    # Lower score is better in FAISS (cosine distance)
+                    source = doc.metadata.get("source_file", "Unknown source")
+                    preview = doc.page_content[:100] + "..." if len(doc.page_content) > 100 else doc.page_content
+                    doc_id = doc.metadata.get("file_id", "Unknown ID")
+                    
+                    logger.info(f"Document {i+1} (Source: {source}, ID: {doc_id[:8]}...)")
+                    logger.info(f"  Score: {score:.6f}")
+                    logger.info(f"  Preview: {preview}")
+                    
+                    # More detailed debug print for document evaluation
+                    print(f"\n----- Document {i+1} Evaluation -----")
+                    print(f"Source: {source}")
+                    print(f"Score: {score:.6f}")
+                    print(f"Doc ID: {doc_id[:8]}...")
+                    print(f"Content Length: {len(doc.page_content)} characters")
+                    print(f"Preview: {preview}")
+                    print(f"Threshold: 0.6 (lower is better)")
+                    
+                    # Use a threshold to determine relevance - tuned based on testing
+                    if score < 0.6:  # Threshold of 0.6 based on our testing
+                        logger.info(f"  RELEVANT: Yes (score {score:.6f} < threshold 0.6)")
+                        relevant_docs.append(doc)
+                        print(f"  DECISION: RELEVANT (score {score:.6f} < 0.6)")
+                    else:
+                        logger.info(f"  RELEVANT: No (score {score:.6f} >= threshold 0.6)")
+                        print(f"  DECISION: NOT RELEVANT (score {score:.6f} >= 0.6)")
+                
+                logger.info("===============================================")
+                
+                # Enhanced debug information for RAG decision
+                print("\n===== DEBUG: RAG Decision =====")
+                print(f"Found {len(relevant_docs)} relevant documents out of {len(search_results)} retrieved")
+                logger.info(f"Relevant documents found: {len(relevant_docs)} out of {len(search_results)}")
+                
+                if relevant_docs:
+                    use_rag = True
+                    logger.info("========== RAG DECISION ==========")
+                    logger.info(f"Using RAG: YES (Found {len(relevant_docs)} relevant documents)")
+                    logger.info("===================================")
+                    
+                    # Format the context from relevant documents with more structure
+                    context = "\n\n---\n\nRelevant information from documents:\n\n"
+                    
+                    # Sort documents by relevance score (if available in metadata)
+                    for i, doc in enumerate(relevant_docs):
+                        # Add document content with detailed source information
+                        source = doc.metadata.get("source_file", "Unknown source")
+                        doc_id = doc.metadata.get("file_id", "Unknown ID")
+                        
+                        # Add section header with document metadata
+                        context += f"Document {i+1} (Source: {source}, ID: {doc_id[:8]}...):\n"
+                        
+                        # Add the document content with proper formatting
+                        content = doc.page_content.strip()
+                        context += f"{content}\n\n"
+                        
+                        # Log the document being used
+                        logger.info(f"Using document {i+1}: {source} (first 50 chars: {content[:50]}...)")
+                    
+                    # Update system message to include context with better instructions
+                    system_message += "\n\nYou have access to the following relevant information from documents. "
+                    system_message += "Use this information to answer the user's question if relevant. "
+                    system_message += "If the information directly addresses the user's question, prioritize it over your general knowledge. "
+                    system_message += "If the information partially addresses the user's question, combine it with your general knowledge. "
+                    system_message += "If the information doesn't address the user's question at all, rely on your general knowledge."
+                else:
+                    logger.info("========== RAG DECISION ==========")
+                    logger.info("Using RAG: NO (No sufficiently relevant documents found)")
+                    logger.info("Falling back to Claude's general knowledge")
+                    logger.info("===================================")
+                    use_rag = False
+            except Exception as e:
+                logger.error(f"Error during semantic search: {str(e)}")
+                use_rag = False
         else:
-            # Regular chat without RAG
             logger.info("Using regular chat without RAG")
-            
-            # Create a system message
-            system_message = "You are a helpful AI assistant."
-            
-            # Check if RAG was requested but no documents are available
-            if request.use_rag and not has_documents:
-                logger.info("RAG was requested but no documents are available")
-                system_message += " The user has requested to use documents for answering, but no documents have been uploaded yet or the documents couldn't be processed."
-            # Check if it's not a document-specific question but documents are available
-            elif request.use_rag and has_documents and not keywords_in_vectorstore:
-                logger.info("Documents available but question doesn't appear to be document-specific")
-                system_message += " The user has uploaded documents, but your current question doesn't appear to be about those documents. I'm answering based on my general knowledge."
-            
-            completion = anthropic.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=min(request.max_tokens, MAX_OUTPUT_TOKENS),
-                system=system_message,
-                messages=[{"role": "user", "content": request.message}]
-            )
-            response_text = completion.content[0].text if completion.content else "No response generated"
-            
-            # Add a note about missing documents if applicable
-            if "document" in request.message.lower() or "upload" in request.message.lower():
-                if not has_documents:
-                    response_text += "\n\n(Note: I don't have access to any uploaded documents yet. Please upload documents first if you'd like me to reference them.)"
+            use_rag = False
+        
+        # Prepare messages for Claude
+        messages = [{"role": "user", "content": request.message}]
+        
+        # If we have context from RAG, include it in the system message
+        if use_rag and context:
+            system_message += context
+            logger.info("========== FINAL SYSTEM MESSAGE WITH CONTEXT ==========")
+            logger.info(f"System message length: {len(system_message)} characters")
+            logger.info("First 200 characters of system message:")
+            logger.info(system_message[:200] + "...")
+            logger.info("======================================================")
+        else:
+            logger.info("========== FINAL SYSTEM MESSAGE ==========")
+            logger.info("Using default system message without RAG context")
+            logger.info(f"System message: {system_message}")
+            logger.info("==========================================")
+        
+        # Call Claude API
+        completion = anthropic.messages.create(
+            model="claude-3-haiku-20240307",
+            max_tokens=min(request.max_tokens, MAX_OUTPUT_TOKENS),
+            system=system_message,
+            messages=messages
+        )
+        response_text = completion.content[0].text if completion.content else "No response generated"
         
         return ChatResponse(
             response=response_text
