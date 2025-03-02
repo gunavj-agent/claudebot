@@ -331,7 +331,7 @@ async def chat(request: ChatRequest):
                 relevant_docs = []
                 logger.info("========== DOCUMENT RELEVANCE SCORES ==========")
                 logger.info(f"Total documents retrieved: {len(search_results)}")
-                logger.info(f"Relevance threshold: 0.6 (lower is better)")
+                logger.info(f"Relevance threshold: 0.9 (lower is better)")
                 
                 for i, (doc, score) in enumerate(search_results):
                     # Lower score is better in FAISS (cosine distance)
@@ -350,16 +350,16 @@ async def chat(request: ChatRequest):
                     print(f"Doc ID: {doc_id[:8]}...")
                     print(f"Content Length: {len(doc.page_content)} characters")
                     print(f"Preview: {preview}")
-                    print(f"Threshold: 0.6 (lower is better)")
+                    print(f"Threshold: 0.9 (lower is better)")
                     
                     # Use a threshold to determine relevance - tuned based on testing
-                    if score < 0.6:  # Threshold of 0.6 based on our testing
-                        logger.info(f"  RELEVANT: Yes (score {score:.6f} < threshold 0.6)")
+                    if score < 0.9:  # Threshold of 0.9 based on our testing
+                        logger.info(f"  RELEVANT: Yes (score {score:.6f} < threshold 0.9)")
                         relevant_docs.append(doc)
-                        print(f"  DECISION: RELEVANT (score {score:.6f} < 0.6)")
+                        print(f"  DECISION: RELEVANT (score {score:.6f} < 0.9)")
                     else:
-                        logger.info(f"  RELEVANT: No (score {score:.6f} >= threshold 0.6)")
-                        print(f"  DECISION: NOT RELEVANT (score {score:.6f} >= 0.6)")
+                        logger.info(f"  RELEVANT: No (score {score:.6f} >= threshold 0.9)")
+                        print(f"  DECISION: NOT RELEVANT (score {score:.6f} >= 0.9)")
                 
                 logger.info("===============================================")
                 

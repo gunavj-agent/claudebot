@@ -96,7 +96,7 @@ sequenceDiagram
     VS->>VDB: Query Vector Database
     VDB->>VS: Return Documents with Relevance Scores
     
-    alt Relevant Documents Found (Score < 0.6)
+    alt Relevant Documents Found (Score < 0.9)
         VS->>RAG: Use RAG with Relevant Documents
         RAG->>Claude: Generate Response with Document Context
         Claude->>RAG: Return Document-Based Response

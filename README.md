@@ -43,7 +43,7 @@ A modern AI-powered chatbot with intelligent document processing capabilities, b
 | Question          | -----> | Process Full Query   | -----> | If relevant docs  |
 |                   |        | Search Vector DB     |        | - Use RAG         |
 |                   |        | Score Relevance      |        | If not relevant   |
-|                   |        | (Threshold: 0.6)     |        | - Use Claude      |
+|                   |        | (Threshold: 0.9)     |        | - Use Claude      |
 +-------------------+        +----------------------+        +-------------------+
 ```
 
@@ -124,11 +124,11 @@ The application will be available at: http://127.0.0.1:8000
 
 3. **Relevance Evaluation**:
    - Each document's relevance is evaluated based on its similarity score
-   - Documents with scores below 0.6 are considered relevant
+   - Documents with scores below 0.9 are considered relevant
    - Detailed logging tracks the relevance decision process
 
 4. **Smart Response Generation**:
-   - If relevant documents are found (score < 0.6):
+   - If relevant documents are found (score < 0.9):
      - The system uses these documents as context
      - The response is generated based specifically on these documents
    - If no relevant documents are found:
