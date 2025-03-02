@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sendButton.addEventListener('click', sendMessage);
     
+    // RAG is handled intelligently on the backend
+    
     // Handle document upload
     documentUploadInput.addEventListener('change', async (event) => {
         const files = event.target.files;
@@ -68,11 +70,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fileNames = result.uploaded_files.map(f => f.filename).join(', ');
                 
                 // Create a bot message in the chat window
-                const messageContent = `I've successfully processed the following document(s): ${fileNames}.\n\nThese documents are now available for me to reference when answering your questions. Try asking me something specific about the content, such as "What are the key points in the document?" or "Summarize the main ideas from the uploaded files."`;
+                const messageContent = `I've successfully processed the following document(s): ${fileNames}.\n\nThese documents are now available for me to reference when answering your questions. I'll automatically use them when relevant to your questions.\n\nTry asking me something specific about the content, such as "What are the key points in the document?" or "Summarize the main ideas from the uploaded files."`;
                 
                 const messageElement = createMessageElement(messageContent, false);
                 chatMessages.appendChild(messageElement);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // RAG is handled intelligently on the backend
                 
                 // Update our tracking of uploaded documents
                 checkVectorStore();
@@ -138,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     message: message,
                     max_tokens: 1000,
-                    use_rag: true
+                    use_rag: true  // Always enable RAG, backend will decide intelligently
                 }),
             });
 
@@ -172,6 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    // RAG functionality has been removed
+
     function checkVectorStore() {
         fetch('/vector-info')
             .then(response => response.json())
@@ -183,10 +189,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // Add a message if documents are available
                     if (uploadedDocuments.length > 0 && chatMessages.children.length === 1) {
-                        const messageContent = `I have access to ${uploadedDocuments.length} document chunks that I can reference when answering your questions. Ask me anything about the uploaded documents!`;
+                        const messageContent = `I have access to ${uploadedDocuments.length} document chunks that I can reference when answering your questions. I'll automatically use them when relevant to your questions. Ask me anything about the uploaded documents!`;
                         const messageElement = createMessageElement(messageContent, false);
                         chatMessages.appendChild(messageElement);
                         chatMessages.scrollTop = chatMessages.scrollHeight;
+                        
+                        // RAG is handled intelligently on the backend
                     }
                 }
             })

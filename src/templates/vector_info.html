@@ -90,10 +90,15 @@
     </div>
 
     <script>
+        console.log('Vector info page loaded');
         document.addEventListener('DOMContentLoaded', async function() {
+            console.log('DOM content loaded event fired');
             try {
+                console.log('Fetching vector info data...');
                 const response = await fetch('/vector-info');
+                console.log('Response received:', response.status);
                 const data = await response.json();
+                console.log('Data received:', data);
                 
                 // Update status
                 const statusElement = document.getElementById('status');
@@ -143,6 +148,17 @@
                 const statusElement = document.getElementById('status');
                 statusElement.textContent = `Error: ${error.message}`;
                 statusElement.className = 'status error';
+                
+                // Add more detailed error information
+                const documentsContainer = document.getElementById('documents-container');
+                documentsContainer.innerHTML = `
+                    <div style="padding: 15px; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; margin-bottom: 20px;">
+                        <h3 style="color: #721c24; margin-top: 0;">Error Details:</h3>
+                        <p><strong>Message:</strong> ${error.message}</p>
+                        <p><strong>Stack:</strong> <pre>${error.stack || 'No stack trace available'}</pre></p>
+                        <p>Please check your browser console for more details.</p>
+                    </div>
+                `;
             }
         });
     </script>
