@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .upload-container {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .upload-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .upload-button:hover {
+            background-color: #45a049;
+        }
+        #upload-status {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test File Upload</h1>
+    
+    <div class="upload-container">
+        <h2>Upload Test</h2>
+        <input type="file" id="file-input" accept=".pdf,.txt,.docx" multiple>
+        <button id="upload-button" class="upload-button">Upload Files</button>
+        <div id="upload-status"></div>
+    </div>
+    
+    <div id="results">
+        <h2>Results</h2>
+        <pre id="result-content"></pre>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('file-input');
+            const uploadButton = document.getElementById('upload-button');
+            const uploadStatus = document.getElementById('upload-status');
+            const resultContent = document.getElementById('result-content');
+            
+            uploadButton.addEventListener('click', async () => {
+                console.log('Upload button clicked');
+                if (fileInput.files.length === 0) {
+                    uploadStatus.textContent = 'Please select files to upload';
+                    uploadStatus.className = 'error';
+                    return;
+                }
+                
+                uploadStatus.textContent = 'Uploading...';
+                uploadStatus.className = '';
+                
+                const formData = new FormData();
+                for (const file of fileInput.files) {
+                    console.log(`Adding file to FormData: ${file.name} (${file.type}, ${file.size} bytes)`);
+                    formData.append('files', file);
+                }
+                
+                try {
+                    console.log('Sending upload request to /upload');
+                    console.log('FormData contents:', Array.from(formData.entries()).map(entry => {
+                        if (entry[1] instanceof File) {
+                            return [entry[0], `File: ${entry[1].name}, ${entry[1].size} bytes`];
+                        }
+                        return entry;
+                    }));
+                    
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    
+                    console.log('Upload response status:', response.status);
+                    console.log('Upload response headers:', Object.fromEntries([...response.headers.entries()]));
+                    
+                    if (!response.ok) {
+                        console.error('Response not OK:', response.status, response.statusText);
+                        const errorText = await response.text();
+                        console.error('Error response body:', errorText);
+                        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    console.log('Upload result:', result);
+                    
+                    uploadStatus.textContent = `Uploaded ${result.uploaded_files.length} document(s) successfully`;
+                    uploadStatus.className = 'success';
+                    
+                    // Display the result
+                    resultContent.textContent = JSON.stringify(result, null, 2);
+                    
+                    // Clear the file input
+                    fileInput.value = '';
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    uploadStatus.textContent = `Error: ${error.message}`;
+                    uploadStatus.className = 'error';
+                    resultContent.textContent = `Error: ${error.message}`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
