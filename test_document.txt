@@ -1,0 +1,11 @@
+This is a test document for the Notif Chatbot.
+
+It contains some sample text that will be processed by the RAG system.
+
+The chatbot should be able to answer questions about this document.
+
+Key points:
+1. This is a test
+2. The document is for testing the upload functionality
+3. The RAG system should process this document
+4. The chatbot should be able to reference this information when answering questions
