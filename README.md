@@ -1,4 +1,4 @@
-# Notif Chatbot - Semantic Search RAG System
+#Conversational Chatbot - Semantic Search RAG System
 
 A modern AI-powered chatbot with intelligent document processing capabilities, built with FastAPI and Claude 3 Haiku.
 
